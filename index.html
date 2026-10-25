@@ -74,8 +74,10 @@ button:disabled{opacity:.5;cursor:default}
   <textarea id="tr" placeholder="Тут з’явиться текст вашого голосового…"></textarea>
   <div class="row">
     <button class="b p" id="go">✨ Витягти ідеї</button>
+    <button class="b" id="pnc">✍ Розставити пунктуацію</button>
     <button class="b" id="clr">Очистити</button>
   </div>
+  <label class="sub" style="display:flex;gap:8px;align-items:center;margin:12px 0 0"><input type="checkbox" id="auto"> Розставляти пунктуацію автоматично після запису</label>
   <div id="err" class="err" role="alert"></div>
 </section>
 
@@ -138,11 +140,12 @@ function start(){
   recording=true;mic.classList.add("on");mic.textContent="⏹";mic.setAttribute("aria-label","Зупинити запис");
   st.textContent="Слухаю… говоріть";$("timer").textContent="00:00";startTimer();lockScreen();
 }
-function stop(){
+function stop(skip){
   recording=false;try{rec&&rec.stop()}catch(e){}
   clearInterval(tInt);unlock();
   mic.classList.remove("on");mic.textContent="🎙";mic.setAttribute("aria-label","Почати запис");
   st.textContent=tr.value.trim()?"Запис зупинено. Можна витягти ідеї.":"Натисніть, щоб почати говорити";
+  if(!skip&&$("auto").checked)setTimeout(punctuate,900);
 }
 mic.onclick=()=>recording?stop():start();
 document.addEventListener("visibilitychange",()=>{if(recording&&document.visibilityState==="visible")lockScreen()});
@@ -151,7 +154,7 @@ document.addEventListener("visibilitychange",()=>{if(recording&&document.visibil
 function showErr(m){$("err").textContent=m||""}
 $("go").onclick=async()=>{
   const text=tr.value.trim();
-  if(recording)stop();
+  if(recording)stop(true);
   if(text.length<15){showErr("Замало тексту. Запишіть щось довше.");return}
   showErr("");
   const btn=$("go");btn.disabled=true;btn.textContent="Думаю…";
@@ -180,7 +183,30 @@ $("go").onclick=async()=>{
     showErr(e.status===401?"Ключ API не підійшов. Перевірте його в налаштуваннях.":e.status===429?"Забагато запитів, спробуйте за хвилину.":!navigator.onLine?"Немає інтернету. Розшифровка збережена, спробуйте пізніше.":"Не вдалося обробити запис. Спробуйте ще раз.");
   }finally{btn.disabled=false;btn.textContent="✨ Витягти ідеї"}
 };
-$("clr").onclick=()=>{if(recording)stop();tr.value="";finalText="";showErr("");$("timer").textContent="00:00"};
+async function punctuate(){
+  if(recording)stop(true);
+  const text=tr.value.trim();
+  if(text.length<15)return;
+  const apiKey=localStorage.getItem(KEYNAME)||"";
+  if(!apiKey){showErr("Спершу додайте ключ API в налаштуваннях вище.");$("cfg").open=true;return}
+  showErr("");const b=$("pnc");b.disabled=true;b.textContent="Редагую…";
+  try{
+    const prompt=`Нижче розшифровка голосової нотатки українською, отримана з розпізнавання мови, тож без розділових знаків. Розстав розділові знаки, великі літери, розбий текст на речення, а за зміною теми на абзаци. Виправ лише очевидні помилки розпізнавання. Нічого не додавай, не скорочуй і не перефразовуй. Поверни лише готовий текст без коментарів.
+
+"""${text}"""`;
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-5-5",max_tokens:4000,messages:[{role:"user",content:prompt}]})});
+    if(!r.ok){const er=new Error("http");er.status=r.status;throw er}
+    const data=await r.json();
+    const out=(data.content||[]).map(c=>c.text||"").join("").trim();
+    if(out){tr.value=out;finalText=out+" "}
+  }catch(e){
+    showErr(e.status===401?"Ключ API не підійшов. Перевірте його в налаштуваннях.":e.status===429?"Забагато запитів, спробуйте за хвилину.":!navigator.onLine?"Немає інтернету. Текст збережено без змін.":"Не вдалося розставити пунктуацію.");
+  }finally{b.disabled=false;b.textContent="✍ Розставити пунктуацію"}
+}
+$("pnc").onclick=punctuate;
+try{$("auto").checked=localStorage.getItem("idei-auto")==="1"}catch(e){}
+$("auto").onchange=()=>{try{localStorage.setItem("idei-auto",$("auto").checked?"1":"0")}catch(e){}};
+$("clr").onclick=()=>{if(recording)stop(true);tr.value="";finalText="";showErr("");$("timer").textContent="00:00"};
 
 /* ---------- Список ---------- */
 function fmtDate(iso){const d=new Date(iso);return d.toLocaleDateString("uk-UA",{day:"numeric",month:"long"})+", "+d.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"})}
