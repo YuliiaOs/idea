@@ -112,18 +112,22 @@ function unlock(){try{wake&&wake.release()}catch(e){}wake=null}
 function build(){
   rec=new SR();rec.lang="uk-UA";rec.continuous=true;rec.interimResults=true;
   rec.onresult=e=>{
-    let interim="";
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      const r=e.results[i];
-      if(r.isFinal)finalText+=r[0].transcript.trim()+" ";else interim+=r[0].transcript;
+    const segs=[];
+    for(let k=0;k<e.results.length;k++){
+      const t=e.results[k][0].transcript.trim();
+      if(!t)continue;
+      const p=segs.length?segs[segs.length-1]:"";
+      if(p&&t.startsWith(p))segs[segs.length-1]=t;
+      else if(p&&p.startsWith(t))continue;
+      else segs.push(t);
     }
-    tr.value=(finalText+interim).trim();
+    tr.value=(finalText+segs.join(" ")).trim();
     tr.scrollTop=tr.scrollHeight;
   };
   rec.onerror=e=>{
     if(e.error==="not-allowed"||e.error==="service-not-allowed"){stop();showErr("Немає доступу до мікрофона. Дозвольте його в налаштуваннях браузера.")}
   };
-  rec.onend=()=>{if(recording){try{rec.start()}catch(e){}}};
+  rec.onend=()=>{if(recording){finalText=tr.value.trim()?tr.value.trim()+" ":"";try{rec.start()}catch(e){}}};
 }
 function start(){
   showErr("");
