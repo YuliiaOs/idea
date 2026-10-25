@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ідеї на прогулянці</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2f7d5b">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#1f2a24;--mute:#6b766f;--line:#e3e0d7;--acc:#2f7d5b;--accink:#fff;--rec:#d6453d;--star:#e0a100;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a17;--card:#1d2621;--ink:#e8efe9;--mute:#97a49b;--line:#2c3832;--acc:#4fb88a;--accink:#07140d;--rec:#ef6a61;--star:#f0be3a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141a17;--card:#1d2621;--ink:#e8efe9;--mute:#97a49b;--line:#2c3832;--acc:#4fb88a;--accink:#07140d;--rec:#ef6a61;--star:#f0be3a;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:22px;margin:4px 0 2px}
+.sub{color:var(--mute);margin:0 0 20px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+.rec{display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 16px}
+#mic{width:96px;height:96px;border-radius:50%;border:0;background:var(--acc);color:var(--accink);font-size:38px;cursor:pointer;display:grid;place-items:center;transition:transform .15s}
+#mic:active{transform:scale(.95)}
+#mic.on{background:var(--rec);animation:pulse 1.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--rec) 50%,transparent)}100%{box-shadow:0 0 0 24px transparent}}
+@media (prefers-reduced-motion:reduce){#mic.on{animation:none}}
+#status{font-size:14px;color:var(--mute);text-align:center;min-height:21px}
+#timer{font-variant-numeric:tabular-nums;font-size:20px;font-weight:600}
+textarea{width:100%;min-height:130px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);color:var(--ink);font:inherit}
+label.l{font-size:13px;color:var(--mute);display:block;margin-bottom:6px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+button.b{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px;border-radius:10px;font:inherit;cursor:pointer}
+button.p{background:var(--acc);color:var(--accink);border-color:var(--acc);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+.sec{display:flex;justify-content:space-between;align-items:center;margin:24px 0 10px}
+.sec h2{font-size:17px;margin:0}
+.idea{display:flex;gap:10px;align-items:flex-start}
+.idea+.idea{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+.idea .t{font-weight:600}
+.idea .w{color:var(--mute);font-size:14px;margin-top:2px}
+.tag{display:inline-block;font-size:12px;background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--acc);border-radius:99px;padding:1px 9px;margin-top:6px}
+.ib{background:none;border:0;cursor:pointer;font-size:20px;color:var(--mute);padding:2px 6px;line-height:1}
+.ib.s.on{color:var(--star)}
+.sess{font-size:13px;color:var(--mute);margin:18px 0 6px}
+.empty{color:var(--mute);text-align:center;padding:12px 0}
+.err{color:var(--rec);font-size:14px;margin-top:8px}
+.filters{display:flex;gap:6px}
+.filters button{font-size:13px;padding:5px 10px}
+.filters .on{background:var(--acc);color:var(--accink);border-color:var(--acc)}
+</style>
+</head>
+<body>
+<main>
+<h1>Ідеї на прогулянці</h1>
+<p class="sub">Говоріть вільно — застосунок розшифрує запис і витягне з нього найцінніше.</p>
+
+<section class="card rec">
+  <button id="mic" aria-label="Почати запис">🎙</button>
+  <div id="timer">00:00</div>
+  <div id="status">Натисніть, щоб почати говорити</div>
+</section>
+
+<details class="card" id="cfg">
+  <summary style="cursor:pointer;font-weight:600">⚙ Налаштування: ключ API Anthropic</summary>
+  <p class="sub" style="margin:10px 0">Потрібен лише для витягу ідей. Ключ зберігається тільки на цьому телефоні. Отримати його можна на console.anthropic.com.</p>
+  <input id="key" type="password" autocomplete="off" placeholder="sk-ant-…" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit">
+  <div class="row"><button class="b p" id="saveKey">Зберегти ключ</button><span id="keyOk" class="sub" style="align-self:center;margin:0"></span></div>
+</details>
+
+<section class="card">
+  <label class="l" for="tr">Розшифровка (можна редагувати або вставити свій текст)</label>
+  <textarea id="tr" placeholder="Тут з’явиться текст вашого голосового…"></textarea>
+  <div class="row">
+    <button class="b p" id="go">✨ Витягти ідеї</button>
+    <button class="b" id="clr">Очистити</button>
+  </div>
+  <div id="err" class="err" role="alert"></div>
+</section>
+
+<div class="sec">
+  <h2>Мої ідеї</h2>
+  <div class="filters"><button class="b on" id="fAll">Усі</button><button class="b" id="fStar">★ Обрані</button></div>
+</div>
+<div id="list"></div>
+<div class="row" id="tools" style="display:none">
+  <button class="b" id="copy">Копіювати список</button>
+  <button class="b" id="dl">Зберегти .txt</button>
+  <button class="b" id="wipe">Видалити все</button>
+</div>
+</main>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const KEY="idei-walk-v1",KEYNAME="idei-api-key";
+let ideas=[]; let onlyStar=false;
+try{ideas=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){ideas=[]}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(ideas))}catch(e){}}
+
+/* ---------- Запис і розшифровка ---------- */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,recording=false,finalText="",tInt=null,t0=0,wake=null;
+const mic=$("mic"),st=$("status"),tr=$("tr");
+
+function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function startTimer(){t0=Date.now();tInt=setInterval(()=>{$("timer").textContent=fmt(Math.floor((Date.now()-t0)/1000))},500)}
+async function lockScreen(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request("screen")}catch(e){}}
+function unlock(){try{wake&&wake.release()}catch(e){}wake=null}
+
+function build(){
+  rec=new SR();rec.lang="uk-UA";rec.continuous=true;rec.interimResults=true;
+  rec.onresult=e=>{
+    let interim="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const r=e.results[i];
+      if(r.isFinal)finalText+=r[0].transcript.trim()+" ";else interim+=r[0].transcript;
+    }
+    tr.value=(finalText+interim).trim();
+    tr.scrollTop=tr.scrollHeight;
+  };
+  rec.onerror=e=>{
+    if(e.error==="not-allowed"||e.error==="service-not-allowed"){stop();showErr("Немає доступу до мікрофона. Дозвольте його в налаштуваннях браузера.")}
+  };
+  rec.onend=()=>{if(recording){try{rec.start()}catch(e){}}};
+}
+function start(){
+  showErr("");
+  if(!SR){showErr("Цей браузер не вміє розпізнавати мову. Спробуйте Chrome чи Safari, або вставте текст вручну.");return}
+  finalText=tr.value?tr.value.trim()+" ":"";
+  build();
+  try{rec.start()}catch(e){}
+  recording=true;mic.classList.add("on");mic.textContent="⏹";mic.setAttribute("aria-label","Зупинити запис");
+  st.textContent="Слухаю… говоріть";$("timer").textContent="00:00";startTimer();lockScreen();
+}
+function stop(){
+  recording=false;try{rec&&rec.stop()}catch(e){}
+  clearInterval(tInt);unlock();
+  mic.classList.remove("on");mic.textContent="🎙";mic.setAttribute("aria-label","Почати запис");
+  st.textContent=tr.value.trim()?"Запис зупинено. Можна витягти ідеї.":"Натисніть, щоб почати говорити";
+}
+mic.onclick=()=>recording?stop():start();
+document.addEventListener("visibilitychange",()=>{if(recording&&document.visibilityState==="visible")lockScreen()});
+
+/* ---------- Витяг ідей через Claude ---------- */
+function showErr(m){$("err").textContent=m||""}
+$("go").onclick=async()=>{
+  const text=tr.value.trim();
+  if(recording)stop();
+  if(text.length<15){showErr("Замало тексту. Запишіть щось довше.");return}
+  showErr("");
+  const btn=$("go");btn.disabled=true;btn.textContent="Думаю…";
+  try{
+    const apiKey=localStorage.getItem(KEYNAME)||"";
+    if(!apiKey){showErr("Спершу додайте ключ API в налаштуваннях вище.");$("cfg").open=true;return}
+    const prompt=`Нижче розшифровка голосової нотатки, яку людина надиктувала під час прогулянки. Розпізнавання мови недосконале, тож виправ очевидні помилки за змістом.
+Витягни з неї найкращі ідеї: конкретні, дієві чи цікаві думки. Відкинь воду, повтори й побутові репліки. Об’єднай дублі. Не вигадуй того, чого людина не казала.
+Поверни ЛИШЕ JSON без пояснень і без markdown: {"ideas":[{"text":"суть ідеї одним-двома реченнями","why":"чому вона цінна або яким може бути перший крок, одне речення","tag":"одне-два слова про тему"}]}
+Ідеї впорядкуй від найсильнішої. Мова відповіді: українська.
+
+Розшифровка:
+"""${text}"""`;
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-5-5",max_tokens:2000,messages:[{role:"user",content:prompt}]})});
+    if(!r.ok){const er=new Error("http");er.status=r.status;throw er}
+    const data=await r.json();
+    const raw=(data.content||[]).map(c=>c.text||"").join("").replace(/```json|```/g,"").trim();
+    const res=JSON.parse(raw);
+    const arr=(res&&res.ideas)||[];
+    if(!arr.length){showErr("Чітких ідей не знайдено. Спробуйте записати детальніше.");return}
+    const stamp=new Date().toISOString();
+    const fresh=arr.map((x,i)=>({id:stamp+"-"+i,text:String(x.text||""),why:String(x.why||""),tag:String(x.tag||""),star:false,at:stamp}));
+    ideas=fresh.concat(ideas);save();render();
+    tr.value="";finalText="";$("timer").textContent="00:00";st.textContent="Готово: додано ідей — "+fresh.length;
+  }catch(e){
+    showErr(e.status===401?"Ключ API не підійшов. Перевірте його в налаштуваннях.":e.status===429?"Забагато запитів, спробуйте за хвилину.":!navigator.onLine?"Немає інтернету. Розшифровка збережена, спробуйте пізніше.":"Не вдалося обробити запис. Спробуйте ще раз.");
+  }finally{btn.disabled=false;btn.textContent="✨ Витягти ідеї"}
+};
+$("clr").onclick=()=>{if(recording)stop();tr.value="";finalText="";showErr("");$("timer").textContent="00:00"};
+
+/* ---------- Список ---------- */
+function fmtDate(iso){const d=new Date(iso);return d.toLocaleDateString("uk-UA",{day:"numeric",month:"long"})+", "+d.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"})}
+function render(){
+  const box=$("list");box.innerHTML="";
+  const shown=ideas.filter(i=>!onlyStar||i.star);
+  $("tools").style.display=ideas.length?"flex":"none";
+  if(!shown.length){const d=document.createElement("div");d.className="empty";d.textContent=ideas.length?"Обраних ідей ще немає.":"Поки порожньо. Запишіть першу думку!";box.appendChild(d);return}
+  let lastAt=null,card=null;
+  shown.forEach(i=>{
+    if(i.at!==lastAt){
+      lastAt=i.at;
+      const h=document.createElement("div");h.className="sess";h.textContent=fmtDate(i.at);box.appendChild(h);
+      card=document.createElement("div");card.className="card";box.appendChild(card);
+    }
+    const row=document.createElement("div");row.className="idea";
+    const star=document.createElement("button");star.className="ib s"+(i.star?" on":"");star.textContent=i.star?"★":"☆";star.setAttribute("aria-label","Обрати");
+    star.onclick=()=>{i.star=!i.star;save();render()};
+    const body=document.createElement("div");body.style.flex="1";
+    const t=document.createElement("div");t.className="t";t.textContent=i.text;body.appendChild(t);
+    if(i.why){const w=document.createElement("div");w.className="w";w.textContent=i.why;body.appendChild(w)}
+    if(i.tag){const g=document.createElement("span");g.className="tag";g.textContent=i.tag;body.appendChild(g)}
+    const del=document.createElement("button");del.className="ib";del.textContent="✕";del.setAttribute("aria-label","Видалити");
+    del.onclick=()=>{ideas=ideas.filter(x=>x.id!==i.id);save();render()};
+    row.append(star,body,del);card.appendChild(row);
+  });
+}
+function asText(){return ideas.map((i,n)=>(n+1)+". "+(i.star?"★ ":"")+i.text+(i.why?"\n   → "+i.why:"")).join("\n\n")}
+$("fAll").onclick=()=>{onlyStar=false;$("fAll").classList.add("on");$("fStar").classList.remove("on");render()};
+$("fStar").onclick=()=>{onlyStar=true;$("fStar").classList.add("on");$("fAll").classList.remove("on");render()};
+$("copy").onclick=async()=>{try{await navigator.clipboard.writeText(asText());$("copy").textContent="Скопійовано ✓"}catch(e){$("copy").textContent="Не вдалося"}setTimeout(()=>$("copy").textContent="Копіювати список",1800)};
+$("dl").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([asText()],{type:"text/plain;charset=utf-8"}));a.download="ideas.txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)};
+$("saveKey").onclick=()=>{const v=$("key").value.trim();try{localStorage.setItem(KEYNAME,v)}catch(e){}$("key").value="";$("keyOk").textContent=v?"Збережено ✓":"Ключ видалено"};
+if(localStorage.getItem(KEYNAME))$("keyOk").textContent="Ключ збережено ✓";
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+$("wipe").onclick=()=>{if(confirm("Видалити всі ідеї?")){ideas=[];save();render()}};
+render();
+})();
+</script>
+</body>
+</html>
