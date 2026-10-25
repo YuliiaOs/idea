@@ -54,7 +54,7 @@ button:disabled{opacity:.5;cursor:default}
 <body>
 <main>
 <h1>Ідеї на прогулянці</h1>
-<p class="sub">Говоріть вільно — застосунок розшифрує запис і витягне з нього найцінніше.</p>
+<p class="sub">Говоріть вільно — застосунок розшифрує запис і виділить із нього найважливіше.</p>
 
 <section class="card rec">
   <button id="mic" aria-label="Почати запис">🎙</button>
@@ -73,7 +73,7 @@ button:disabled{opacity:.5;cursor:default}
   <label class="l" for="tr">Розшифровка (можна редагувати або вставити свій текст)</label>
   <textarea id="tr" placeholder="Тут з’явиться текст вашого голосового…"></textarea>
   <div class="row">
-    <button class="b p" id="go">✨ Витягти ідеї</button>
+    <button class="b p" id="go">✨ Виділити головне</button>
     <button class="b" id="pnc">✍ Розставити пунктуацію</button>
     <button class="b" id="clr">Очистити</button>
   </div>
@@ -82,7 +82,7 @@ button:disabled{opacity:.5;cursor:default}
 </section>
 
 <div class="sec">
-  <h2>Мої ідеї</h2>
+  <h2>Мої думки</h2>
   <div class="filters"><button class="b on" id="fAll">Усі</button><button class="b" id="fStar">★ Обрані</button></div>
 </div>
 <div id="list"></div>
@@ -144,7 +144,7 @@ function stop(skip){
   recording=false;try{rec&&rec.stop()}catch(e){}
   clearInterval(tInt);unlock();
   mic.classList.remove("on");mic.textContent="🎙";mic.setAttribute("aria-label","Почати запис");
-  st.textContent=tr.value.trim()?"Запис зупинено. Можна витягти ідеї.":"Натисніть, щоб почати говорити";
+  st.textContent=tr.value.trim()?"Запис зупинено. Можна виділити головне.":"Натисніть, щоб почати говорити";
   if(!skip&&$("auto").checked)setTimeout(punctuate,900);
 }
 mic.onclick=()=>recording?stop():start();
@@ -161,27 +161,36 @@ $("go").onclick=async()=>{
   try{
     const apiKey=localStorage.getItem(KEYNAME)||"";
     if(!apiKey){showErr("Спершу додайте ключ API в налаштуваннях вище.");$("cfg").open=true;return}
-    const prompt=`Нижче розшифровка голосової нотатки, яку людина надиктувала під час прогулянки. Розпізнавання мови недосконале, тож виправ очевидні помилки за змістом.
-Витягни з неї найкращі ідеї: конкретні, дієві чи цікаві думки. Відкинь воду, повтори й побутові репліки. Об’єднай дублі. Не вигадуй того, чого людина не казала.
-Поверни ЛИШЕ JSON без пояснень і без markdown: {"ideas":[{"text":"суть ідеї одним-двома реченнями","why":"чому вона цінна або яким може бути перший крок, одне речення","tag":"одне-два слова про тему"}]}
-Ідеї впорядкуй від найсильнішої. Мова відповіді: українська.
+    const prompt=`Нижче розшифровка голосової нотатки з особистого щоденника. Авторка надиктувала її сама для себе під час прогулянки. Розпізнавання мови недосконале, тож виправляй очевидні помилки за змістом.
+Твоє завдання: виділити з запису головне для неї самої, щоб їй було корисно це потім перечитати.
+Правила:
+- Пиши від першої особи, жіночого роду, її голосом: «Я помітила…», «Мені важко…». Ніколи не пиши про неї в третій особі і не вживай слів «людина», «авторка», «вона».
+- Зберігай її власні формулювання, образи й почуття. Не перетворюй живу думку на суху тезу.
+- Не оцінюй, не повчай і не додавай порад чи висновків, яких вона не казала. Нічого не вигадуй.
+- Не відкидай важливе лише тому, що це не «ідея»: усвідомлення, почуття, тригери й закономірності цінні так само.
+- Об’єднуй повтори. Зберігай порядок, у якому думки звучали в записі.
+- Пунктів стільки, скільки справді є змістовного, зазвичай від 3 до 10.
+Тип кожного пункту один із: «інсайт» (усвідомлення про себе), «спостереження» (закономірність, тригер, почуття), «рішення», «крок» (що хочу спробувати), «питання» (відкрите питання до себе), «ідея».
+Поверни ЛИШЕ JSON без пояснень і без markdown:
+{"summary":"1-2 речення від першої особи про що цей запис","items":[{"text":"думка від першої особи, 1-3 речення","type":"один із типів вище"}]}
+Мова відповіді: українська.
 
 Розшифровка:
 """${text}"""`;
-    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-5-5",max_tokens:2000,messages:[{role:"user",content:prompt}]})});
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-5-5",max_tokens:3000,messages:[{role:"user",content:prompt}]})});
     if(!r.ok){const er=new Error("http");er.status=r.status;throw er}
     const data=await r.json();
     const raw=(data.content||[]).map(c=>c.text||"").join("").replace(/```json|```/g,"").trim();
     const res=JSON.parse(raw);
-    const arr=(res&&res.ideas)||[];
-    if(!arr.length){showErr("Чітких ідей не знайдено. Спробуйте записати детальніше.");return}
+    const arr=(res&&res.items)||[];
+    if(!arr.length){showErr("Не вдалося нічого виділити. Спробуйте записати трохи детальніше.");return}
     const stamp=new Date().toISOString();
-    const fresh=arr.map((x,i)=>({id:stamp+"-"+i,text:String(x.text||""),why:String(x.why||""),tag:String(x.tag||""),star:false,at:stamp}));
+    const fresh=arr.map((x,i)=>({id:stamp+"-"+i,text:String(x.text||""),why:"",tag:String(x.type||""),star:false,at:stamp,sum:String(res.summary||""),src:text}));
     ideas=fresh.concat(ideas);save();render();
-    tr.value="";finalText="";$("timer").textContent="00:00";st.textContent="Готово: додано ідей — "+fresh.length;
+    tr.value="";finalText="";$("timer").textContent="00:00";st.textContent="Готово: виділено пунктів — "+fresh.length;
   }catch(e){
     showErr(e.status===401?"Ключ API не підійшов. Перевірте його в налаштуваннях.":e.status===429?"Забагато запитів, спробуйте за хвилину.":!navigator.onLine?"Немає інтернету. Розшифровка збережена, спробуйте пізніше.":"Не вдалося обробити запис. Спробуйте ще раз.");
-  }finally{btn.disabled=false;btn.textContent="✨ Витягти ідеї"}
+  }finally{btn.disabled=false;btn.textContent="✨ Виділити головне"}
 };
 async function punctuate(){
   if(recording)stop(true);
@@ -221,6 +230,8 @@ function render(){
       lastAt=i.at;
       const h=document.createElement("div");h.className="sess";h.textContent=fmtDate(i.at);box.appendChild(h);
       card=document.createElement("div");card.className="card";box.appendChild(card);
+      if(i.sum){const sm=document.createElement("div");sm.className="w";sm.style.cssText="margin-bottom:12px;font-style:italic";sm.textContent=i.sum;card.appendChild(sm)}
+      if(i.src){const d=document.createElement("details");d.style.cssText="margin-bottom:12px;font-size:14px;color:var(--mute)";const sy=document.createElement("summary");sy.style.cursor="pointer";sy.textContent="Повний запис";const p=document.createElement("div");p.style.cssText="margin-top:6px;white-space:pre-wrap";p.textContent=i.src;d.append(sy,p);card.appendChild(d)}
     }
     const row=document.createElement("div");row.className="idea";
     const star=document.createElement("button");star.className="ib s"+(i.star?" on":"");star.textContent=i.star?"★":"☆";star.setAttribute("aria-label","Обрати");
