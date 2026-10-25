@@ -166,13 +166,14 @@ $("go").onclick=async()=>{
 Правила:
 - Пиши від першої особи, жіночого роду, її голосом: «Я помітила…», «Мені важко…». Ніколи не пиши про неї в третій особі і не вживай слів «людина», «авторка», «вона».
 - Зберігай її власні формулювання, образи й почуття. Не перетворюй живу думку на суху тезу.
-- Не оцінюй, не повчай і не додавай порад чи висновків, яких вона не казала. Нічого не вигадуй.
+- У пунктах (items) не оцінюй, не повчай і не додавай порад чи висновків, яких вона не казала. Нічого не вигадуй.
 - Не відкидай важливе лише тому, що це не «ідея»: усвідомлення, почуття, тригери й закономірності цінні так само.
 - Об’єднуй повтори. Зберігай порядок, у якому думки звучали в записі.
 - Пунктів стільки, скільки справді є змістовного, зазвичай від 3 до 10.
+Окремо напиши поле comment: це твій власний коментар як уважного співрозмовника, а не від її імені. Звертайся до неї на «ви». 3-5 речень. Чесно скажи, чим цей запис може бути корисним (що він прояснює), і з чого реалістично почати: один маленький конкретний перший крок, який випливає з її слів. Не лести, не став діагнозів, не нав’язуй. Якщо в записі чути сильний біль чи виснаження, м’яко згадай, що про це варто поговорити з близькою людиною чи фахівцем.
 Тип кожного пункту один із: «інсайт» (усвідомлення про себе), «спостереження» (закономірність, тригер, почуття), «рішення», «крок» (що хочу спробувати), «питання» (відкрите питання до себе), «ідея».
 Поверни ЛИШЕ JSON без пояснень і без markdown:
-{"summary":"1-2 речення від першої особи про що цей запис","items":[{"text":"думка від першої особи, 1-3 речення","type":"один із типів вище"}]}
+{"summary":"1-2 речення від першої особи про що цей запис","comment":"коментар від тебе, 3-5 речень","items":[{"text":"думка від першої особи, 1-3 речення","type":"один із типів вище"}]}
 Мова відповіді: українська.
 
 Розшифровка:
@@ -185,7 +186,7 @@ $("go").onclick=async()=>{
     const arr=(res&&res.items)||[];
     if(!arr.length){showErr("Не вдалося нічого виділити. Спробуйте записати трохи детальніше.");return}
     const stamp=new Date().toISOString();
-    const fresh=arr.map((x,i)=>({id:stamp+"-"+i,text:String(x.text||""),why:"",tag:String(x.type||""),star:false,at:stamp,sum:String(res.summary||""),src:text}));
+    const fresh=arr.map((x,i)=>({id:stamp+"-"+i,text:String(x.text||""),why:"",tag:String(x.type||""),star:false,at:stamp,sum:String(res.summary||""),com:String(res.comment||""),src:text}));
     ideas=fresh.concat(ideas);save();render();
     tr.value="";finalText="";$("timer").textContent="00:00";st.textContent="Готово: виділено пунктів — "+fresh.length;
   }catch(e){
@@ -219,33 +220,50 @@ $("clr").onclick=()=>{if(recording)stop(true);tr.value="";finalText="";showErr("
 
 /* ---------- Список ---------- */
 function fmtDate(iso){const d=new Date(iso);return d.toLocaleDateString("uk-UA",{day:"numeric",month:"long"})+", "+d.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"})}
+function groups(list){const m=new Map();list.forEach(i=>{if(!m.has(i.at))m.set(i.at,[]);m.get(i.at).push(i)});return [...m.values()]}
+function fmtGroup(g){
+  const f=g[0];let t=fmtDate(f.at)+"\n";
+  if(f.sum)t+=f.sum+"\n";
+  t+="\n"+g.map((i,n)=>(n+1)+". "+(i.star?"★ ":"")+i.text+(i.tag?" ["+i.tag+"]":"")+(i.why?"\n   → "+i.why:"")).join("\n");
+  if(f.com)t+="\n\nКоментар Claude: "+f.com;
+  return t;
+}
+function asText(){return groups(ideas).map(fmtGroup).join("\n\n———\n\n")}
+async function copyTxt(btn,txt,label){try{await navigator.clipboard.writeText(txt);btn.textContent="Скопійовано ✓"}catch(e){btn.textContent="Не вдалося"}setTimeout(()=>btn.textContent=label,1800)}
+function mini(label){const b=document.createElement("button");b.className="b";b.style.cssText="padding:4px 10px;font-size:13px";b.textContent=label;return b}
 function render(){
   const box=$("list");box.innerHTML="";
   const shown=ideas.filter(i=>!onlyStar||i.star);
   $("tools").style.display=ideas.length?"flex":"none";
-  if(!shown.length){const d=document.createElement("div");d.className="empty";d.textContent=ideas.length?"Обраних ідей ще немає.":"Поки порожньо. Запишіть першу думку!";box.appendChild(d);return}
-  let lastAt=null,card=null;
-  shown.forEach(i=>{
-    if(i.at!==lastAt){
-      lastAt=i.at;
-      const h=document.createElement("div");h.className="sess";h.textContent=fmtDate(i.at);box.appendChild(h);
-      card=document.createElement("div");card.className="card";box.appendChild(card);
-      if(i.sum){const sm=document.createElement("div");sm.className="w";sm.style.cssText="margin-bottom:12px;font-style:italic";sm.textContent=i.sum;card.appendChild(sm)}
-      if(i.src){const d=document.createElement("details");d.style.cssText="margin-bottom:12px;font-size:14px;color:var(--mute)";const sy=document.createElement("summary");sy.style.cursor="pointer";sy.textContent="Повний запис";const p=document.createElement("div");p.style.cssText="margin-top:6px;white-space:pre-wrap";p.textContent=i.src;d.append(sy,p);card.appendChild(d)}
-    }
-    const row=document.createElement("div");row.className="idea";
-    const star=document.createElement("button");star.className="ib s"+(i.star?" on":"");star.textContent=i.star?"★":"☆";star.setAttribute("aria-label","Обрати");
-    star.onclick=()=>{i.star=!i.star;save();render()};
-    const body=document.createElement("div");body.style.flex="1";
-    const t=document.createElement("div");t.className="t";t.textContent=i.text;body.appendChild(t);
-    if(i.why){const w=document.createElement("div");w.className="w";w.textContent=i.why;body.appendChild(w)}
-    if(i.tag){const g=document.createElement("span");g.className="tag";g.textContent=i.tag;body.appendChild(g)}
-    const del=document.createElement("button");del.className="ib";del.textContent="✕";del.setAttribute("aria-label","Видалити");
-    del.onclick=()=>{ideas=ideas.filter(x=>x.id!==i.id);save();render()};
-    row.append(star,body,del);card.appendChild(row);
+  if(!shown.length){const d=document.createElement("div");d.className="empty";d.textContent=ideas.length?"Обраних думок ще немає.":"Поки порожньо. Запишіть першу думку!";box.appendChild(d);return}
+  const full=groups(ideas);
+  groups(shown).forEach(g=>{
+    const f=g[0];
+    const h=document.createElement("div");h.className="sess";h.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:8px";
+    const dt=document.createElement("span");dt.textContent=fmtDate(f.at);
+    const act=document.createElement("span");act.style.cssText="display:flex;gap:6px";
+    const cp=mini("Копіювати"),dl=mini("Видалити запис");
+    cp.onclick=()=>{const all=full.find(x=>x[0].at===f.at)||g;copyTxt(cp,fmtGroup(all),"Копіювати")};
+    dl.onclick=()=>{if(confirm("Видалити цей запис із усіма його думками?")){ideas=ideas.filter(x=>x.at!==f.at);save();render()}};
+    act.append(cp,dl);h.append(dt,act);box.appendChild(h);
+    const card=document.createElement("div");card.className="card";box.appendChild(card);
+    if(f.sum){const sm=document.createElement("div");sm.className="w";sm.style.cssText="margin-bottom:12px;font-style:italic;color:var(--mute);font-size:14px";sm.textContent=f.sum;card.appendChild(sm)}
+    if(f.src){const d=document.createElement("details");d.style.cssText="margin-bottom:12px;font-size:14px;color:var(--mute)";const sy=document.createElement("summary");sy.style.cursor="pointer";sy.textContent="Повний запис";const p=document.createElement("div");p.style.cssText="margin-top:6px;white-space:pre-wrap";p.textContent=f.src;d.append(sy,p);card.appendChild(d)}
+    g.forEach(i=>{
+      const row=document.createElement("div");row.className="idea";
+      const star=document.createElement("button");star.className="ib s"+(i.star?" on":"");star.textContent=i.star?"★":"☆";star.setAttribute("aria-label","Обрати");
+      star.onclick=()=>{i.star=!i.star;save();render()};
+      const body=document.createElement("div");body.style.flex="1";
+      const t=document.createElement("div");t.className="t";t.textContent=i.text;body.appendChild(t);
+      if(i.why){const w=document.createElement("div");w.className="w";w.textContent=i.why;body.appendChild(w)}
+      if(i.tag){const gg=document.createElement("span");gg.className="tag";gg.textContent=i.tag;body.appendChild(gg)}
+      const del=document.createElement("button");del.className="ib";del.textContent="✕";del.setAttribute("aria-label","Видалити");
+      del.onclick=()=>{ideas=ideas.filter(x=>x.id!==i.id);save();render()};
+      row.append(star,body,del);card.appendChild(row);
+    });
+    if(f.com){const c=document.createElement("div");c.style.cssText="margin-top:14px;padding:12px;border-radius:12px;background:color-mix(in srgb,var(--acc) 10%,transparent);font-size:15px";const l=document.createElement("div");l.style.cssText="font-weight:600;font-size:13px;color:var(--acc);margin-bottom:4px";l.textContent="Коментар Claude";const x=document.createElement("div");x.textContent=f.com;c.append(l,x);card.appendChild(c)}
   });
 }
-function asText(){return ideas.map((i,n)=>(n+1)+". "+(i.star?"★ ":"")+i.text+(i.why?"\n   → "+i.why:"")).join("\n\n")}
 $("fAll").onclick=()=>{onlyStar=false;$("fAll").classList.add("on");$("fStar").classList.remove("on");render()};
 $("fStar").onclick=()=>{onlyStar=true;$("fStar").classList.add("on");$("fAll").classList.remove("on");render()};
 $("copy").onclick=async()=>{try{await navigator.clipboard.writeText(asText());$("copy").textContent="Скопійовано ✓"}catch(e){$("copy").textContent="Не вдалося"}setTimeout(()=>$("copy").textContent="Копіювати список",1800)};
