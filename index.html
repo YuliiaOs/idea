@@ -73,7 +73,8 @@ button:disabled{opacity:.5;cursor:default}
   <label class="l" for="tr">Розшифровка (можна редагувати або вставити свій текст)</label>
   <textarea id="tr" placeholder="Тут з’явиться текст вашого голосового…"></textarea>
   <div class="row">
-    <button class="b p" id="go">✨ Виділити головне</button>
+    <button class="b p" id="go">✨ Сформулювати думки</button>
+    <button class="b p" id="goc">💬 З коментарем Claude</button>
     <button class="b" id="pnc">✍ Розставити пунктуацію</button>
     <button class="b" id="clr">Очистити</button>
   </div>
@@ -152,12 +153,12 @@ document.addEventListener("visibilitychange",()=>{if(recording&&document.visibil
 
 /* ---------- Витяг ідей через Claude ---------- */
 function showErr(m){$("err").textContent=m||""}
-$("go").onclick=async()=>{
+async function extract(withCom){
   const text=tr.value.trim();
   if(recording)stop(true);
   if(text.length<15){showErr("Замало тексту. Запишіть щось довше.");return}
   showErr("");
-  const btn=$("go");btn.disabled=true;btn.textContent="Думаю…";
+  const btn=withCom?$("goc"):$("go"),label=btn.textContent;$("go").disabled=true;$("goc").disabled=true;btn.textContent="Думаю…";
   try{
     const apiKey=localStorage.getItem(KEYNAME)||"";
     if(!apiKey){showErr("Спершу додайте ключ API в налаштуваннях вище.");$("cfg").open=true;return}
@@ -170,10 +171,10 @@ $("go").onclick=async()=>{
 - Не відкидай важливе лише тому, що це не «ідея»: усвідомлення, почуття, тригери й закономірності цінні так само.
 - Об’єднуй повтори. Зберігай порядок, у якому думки звучали в записі.
 - Пунктів стільки, скільки справді є змістовного, зазвичай від 3 до 10.
-Окремо напиши поле comment: це твій власний коментар як уважного співрозмовника, а не від її імені. Звертайся до неї на «ви». 3-5 речень. Чесно скажи, чим цей запис може бути корисним (що він прояснює), і з чого реалістично почати: один маленький конкретний перший крок, який випливає з її слів. Не лести, не став діагнозів, не нав’язуй. Якщо в записі чути сильний біль чи виснаження, м’яко згадай, що про це варто поговорити з близькою людиною чи фахівцем.
-Тип кожного пункту один із: «інсайт» (усвідомлення про себе), «спостереження» (закономірність, тригер, почуття), «рішення», «крок» (що хочу спробувати), «питання» (відкрите питання до себе), «ідея».
+${withCom?`Окремо напиши поле comment: це твій власний коментар як уважного співрозмовника, а не від її імені. Звертайся до неї на «ви». 3-5 речень. Чесно скажи, чим цей запис може бути корисним (що він прояснює), і з чого реалістично почати: один маленький конкретний перший крок, який випливає з її слів. Не лести, не став діагнозів, не нав’язуй. Якщо в записі чути сильний біль чи виснаження, м’яко згадай, що про це варто поговорити з близькою людиною чи фахівцем.
+`:""}Тип кожного пункту один із: «інсайт» (усвідомлення про себе), «спостереження» (закономірність, тригер, почуття), «рішення», «крок» (що хочу спробувати), «питання» (відкрите питання до себе), «ідея».
 Поверни ЛИШЕ JSON без пояснень і без markdown:
-{"summary":"1-2 речення від першої особи про що цей запис","comment":"коментар від тебе, 3-5 речень","items":[{"text":"думка від першої особи, 1-3 речення","type":"один із типів вище"}]}
+{"summary":"1-2 речення від першої особи про що цей запис",${withCom?'"comment":"коментар від тебе, 3-5 речень",':""}"items":[{"text":"думка від першої особи, 1-3 речення","type":"один із типів вище"}]}
 Мова відповіді: українська.
 
 Розшифровка:
@@ -186,13 +187,15 @@ $("go").onclick=async()=>{
     const arr=(res&&res.items)||[];
     if(!arr.length){showErr("Не вдалося нічого виділити. Спробуйте записати трохи детальніше.");return}
     const stamp=new Date().toISOString();
-    const fresh=arr.map((x,i)=>({id:stamp+"-"+i,text:String(x.text||""),why:"",tag:String(x.type||""),star:false,at:stamp,sum:String(res.summary||""),com:String(res.comment||""),src:text}));
+    const fresh=arr.map((x,i)=>({id:stamp+"-"+i,text:String(x.text||""),why:"",tag:String(x.type||""),star:false,at:stamp,sum:String(res.summary||""),com:withCom?String(res.comment||""):"",src:text}));
     ideas=fresh.concat(ideas);save();render();
     tr.value="";finalText="";$("timer").textContent="00:00";st.textContent="Готово: виділено пунктів — "+fresh.length;
   }catch(e){
     showErr(e.status===401?"Ключ API не підійшов. Перевірте його в налаштуваннях.":e.status===429?"Забагато запитів, спробуйте за хвилину.":!navigator.onLine?"Немає інтернету. Розшифровка збережена, спробуйте пізніше.":"Не вдалося обробити запис. Спробуйте ще раз.");
-  }finally{btn.disabled=false;btn.textContent="✨ Виділити головне"}
-};
+  }finally{$("go").disabled=false;$("goc").disabled=false;btn.textContent=label}
+}
+$("go").onclick=()=>extract(false);
+$("goc").onclick=()=>extract(true);
 async function punctuate(){
   if(recording)stop(true);
   const text=tr.value.trim();
